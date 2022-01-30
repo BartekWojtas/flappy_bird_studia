@@ -1,13 +1,42 @@
 ﻿#include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <iostream>
 
 using namespace std;
 
 sf::RenderWindow* window;
+
 float delta;
 
-//Klasa postaci
+bool gameRunning = true;
+bool gameOvered = false;
 
+
+
+// Klasa glowna menu
+
+class Menu {
+private:
+	sf::Texture* menuTexture;
+public:
+	Menu(float width, float height);
+
+	void draw(sf::RenderWindow& window);
+	void MoveUp();
+	void MoveDown();
+
+	Menu() {
+		menuTexture = new sf::Texture();
+
+		menuTexture->loadFromFile("res/bg/tlo1.png");
+
+	}
+};
+ 
+
+//Klasa postaci
+sf::Texture* backgroundTexture;
+sf::Texture* texture;
 class Bird{
 private:
 	sf::Texture* texture;
@@ -42,6 +71,16 @@ public:
 		vel += delta * 900;
 		y += vel * delta;
 	}
+
+	void endgame() {
+		if (y + texture->getSize().y > backgroundTexture->getSize().y) {
+			y = (float)backgroundTexture->getSize().y + texture->getSize().y;
+			vel = 0;
+			gameOvered = true;
+
+		}
+	}
+
 	~Bird() {
 		delete texture;
 	}
@@ -50,11 +89,11 @@ public:
 Bird* bird;
 
 // Funkcje kluczowe
-sf::Texture* backgroundTexture;
 sf::Texture* groundTexture;
 
 sf::Texture* upperPipe;
 sf::Texture* lowerPipe;
+
 class Pipe {
 private:
 	float x;
@@ -95,35 +134,38 @@ public:
 	}
 
 	void update() {
-		x -= 100 * delta;
 
 		x -= 100 * delta;
-		auto birdRect = bird->getRect();
 
-		if (birdRect.intersects(getUpperRect()) or birdRect.intersects(getLowerRect())) {
-			cout << "Kolizja wykryta, gra powinna sie zakonczyc" << endl;
-		}
-
-
+		x -= 100 * delta;
 	}
 
+	void endgame() {
+		auto birdRect = bird->getRect();
+		if (birdRect.intersects(getUpperRect()) or birdRect.intersects(getLowerRect())) {
+			gameOvered = true;
+			cout << "Niestety przegrałeś, graj dalej";
+		}
+	}
 };
+Pipe* rura;
 
 vector<Pipe*> pipes;
 sf::Clock* pipeGeneratingClock;
 
 
 void setup() {
+
 	srand((unsigned int)time(nullptr));
 	pipeGeneratingClock = new sf::Clock;
 
-
 	window = new sf::RenderWindow(sf::VideoMode(400, 700), "Flappy Bird Politechnika Swietokrzyska");
-	window->setPosition({ 1400, 20 });
+	window->setPosition({ 1400, 20 }); 
 
 	bird = new Bird();
 	
 	backgroundTexture = new sf::Texture();
+
 	backgroundTexture->loadFromFile("res/bg/tlo1.png");
 	
 	groundTexture = new sf::Texture();
@@ -139,7 +181,6 @@ void setup() {
 	pipeImage.flipVertically();
 	lowerPipe->loadFromImage(pipeImage);
 
-
 	pipes.push_back(new Pipe());
 }
 void destroy() {
@@ -150,14 +191,11 @@ void destroy() {
 
 }
 
-void end() {
-	delete window;
-	delete bird;
-}
 
 
 void update() {
 	bird->update();
+	bird->endgame();
 	for (const auto& pipe : pipes) {
 		pipe->update();
 	}
@@ -167,16 +205,16 @@ void update() {
 	}
 	
 }
-void handleEvent(sf::Event & event) {
+void handleEvent(sf::Event& event) {
+
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up) || sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
+		bird->flap();
+	}
+
 	if (event.type == sf::Event::Closed) {
 		window->close();
 	}
-	if (event.type == sf::Event::MouseButtonPressed) {
-		bird->flap();
-	}
-	else if (event.type == sf::Event::KeyPressed) {
-		bird->flap();
-	}
+
 }
 
 float groundOffset;
@@ -206,14 +244,13 @@ void draw() {
 	lowerRectangle.setFillColor({ 245, 228, 138 });
 	window->draw(lowerRectangle);
 	bird->draw();
-
 }
+
 int main(){
 	setup();
 
 	sf::Clock deltaClock;
-
-	while (window->isOpen()) {
+	while (window->isOpen() && gameOvered == false) {
 		sf::Event event{};
 		while (window->pollEvent (event)) {
 			handleEvent(event);
@@ -225,5 +262,6 @@ int main(){
 
 		window->display();
 	}
-	end();
+	destroy();
+
 }
